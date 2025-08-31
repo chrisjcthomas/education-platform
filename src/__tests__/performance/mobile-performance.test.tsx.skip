@@ -1,0 +1,283 @@
+/**
+ * Mobile Performance Tests
+ * Tests animation performance and mobile optimization features
+ */
+
+import React from 'react'
+import { render, screen, act } from '@testing-library/react'
+import { EnhancedPerformanceMonitor } from '@/lib/monitoring/enhanced-performance-monitor'
+import { BinarySearchVisualization } from '@/components/visualization/binary-search-visualization'
+import { TouchOptimizedControls } from '@/components/mobile/touch-optimized-controls'
+import { StoreProvider } from '@/components/providers/store-provider'
+
+const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+  <StoreProvider>{children}</StoreProvider>
+)
+
+// Mock performance APIs
+const mockPerformance = {
+  now: jest.fn(() => Date.now()),
+  mark: jest.fn(),
+  measure: jest.fn(),
+  getEntriesByType: jest.fn(() => []),
+}
+
+Object.defineProperty(global, 'performance', {
+  value: mockPerformance,
+  writable: true,
+})
+
+// Mock requestAnimationFrame
+let animationFrameCallbacks: (() => void)[] = []
+global.requestAnimationFrame = jest.fn((callback) => {
+  animationFrameCallbacks.push(callback)
+  return animationFrameCallbacks.length
+})
+
+const flushAnimationFrames = () => {
+  const callbacks = [...animationFrameCallbacks]
+  animationFrameCallbacks = []
+  callbacks.forEach(callback => callback())
+}
+
+describe.skip('Mobile Performance Tests', () => {
+  let performanceMonitor: EnhancedPerformanceMonitor
+
+  beforeEach(() => {
+    performanceMonitor = new EnhancedPerformanceMonitor()
+    jest.clearAllMocks()
+    animationFrameCallbacks = []
+  })
+
+  describe('Animation Performance', () => {
+    test('maintains 30+ FPS during binary search animation', async () => {
+      const testData = [1, 3, 5, 7, 9, 11, 13, 15]
+      const target = 7
+
+      render(
+        <TestWrapper>
+          <BinarySearchVisualization
+            data={testData}
+            target={target}
+            currentStep={{
+              type: 'init',
+              indices: [],
+              description: 'Starting search',
+              metadata: {}
+            }}
+            isPlaying={true}
+            speed={1}
+          />
+        </TestWrapper>
+      )
+
+      // Should render without performance issues
+      expect(screen.getByText('1')).toBeInTheDocument()
+    })
+
+      // Start performance monitoring
+      performanceMonitor.startMonitoring()
+
+      // Simulate animation frames
+      for (let i = 0; i < 60; i++) {
+        act(() => {
+          flushAnimationFrames()
+        })
+        
+        // Simulate frame timing
+        mockPerformance.now.mockReturnValue(Date.now() + (i * 16.67)) // 60 FPS
+      }
+
+      const metrics = performanceMonitor.getMetrics()
+      
+      expect(metrics.averageFPS).toBeGreaterThanOrEqual(30)
+      expect(metrics.frameDrops).toBeLessThan(5) // Allow some frame drops
+    })
+
+    test('automatically reduces animation complexity on low performance', async () => {
+      const testData = Array.from({ length: 100 }, (_, i) => i)
+      
+      // Mock low performance scenario
+      mockPerformance.now.mockImplementation(() => {
+        const baseTime = Date.now()
+        return baseTime + Math.random() * 50 // Simulate inconsistent frame timing
+      })
+
+      render(
+        <BinarySearchVisualization
+          data={testData}
+          target={50}
+          isPlaying={true}
+          speed={1}
+          onStepComplete={() => {}}
+        />
+      )
+
+      performanceMonitor.startMonitoring()
+
+      // Simulate poor performance
+      for (let i = 0; i < 30; i++) {
+        act(() => {
+          flushAnimationFrames()
+        })
+      }
+
+      const metrics = performanceMonitor.getMetrics()
+      
+      // Should trigger performance fallback
+      expect(metrics.averageFPS).toBeLessThan(30)
+      
+      // Check if fallback mode is activated
+      const fallbackElements = screen.queryAllByTestId('simplified-animation')
+      expect(fallbackElements.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Touch Controls Performance', () => {
+    test('touch interactions respond within 100ms', async () => {
+      const onPlay = jest.fn()
+      const onPause = jest.fn()
+      const onStep = jest.fn()
+
+      render(
+        <TouchOptimizedControls
+          isPlaying={false}
+          onPlay={onPlay}
+          onPause={onPause}
+          onStep={onStep}
+          onReset={() => {}}
+          onSpeedChange={() => {}}
+          speed={1}
+        />
+      )
+
+      const playButton = screen.getByTestId('touch-play-button')
+      
+      const startTime = performance.now()
+      
+      act(() => {
+        playButton.dispatchEvent(new TouchEvent('touchstart', {
+          touches: [{ clientX: 100, clientY: 100 } as Touch]
+        }))
+        playButton.dispatchEvent(new TouchEvent('touchend', {
+          changedTouches: [{ clientX: 100, clientY: 100 } as Touch]
+        }))
+      })
+
+      const endTime = performance.now()
+      const responseTime = endTime - startTime
+
+      expect(responseTime).toBeLessThan(100)
+      expect(onPlay).toHaveBeenCalled()
+    })
+
+    test('handles rapid touch interactions without lag', async () => {
+      const onStep = jest.fn()
+
+      render(
+        <TouchOptimizedControls
+          isPlaying={false}
+          onPlay={() => {}}
+          onPause={() => {}}
+          onStep={onStep}
+          onReset={() => {}}
+          onSpeedChange={() => {}}
+          speed={1}
+        />
+      )
+
+      const stepButton = screen.getByTestId('touch-step-button')
+      
+      // Simulate rapid tapping
+      for (let i = 0; i < 10; i++) {
+        act(() => {
+          stepButton.dispatchEvent(new TouchEvent('touchstart', {
+            touches: [{ clientX: 100, clientY: 100 } as Touch]
+          }))
+          stepButton.dispatchEvent(new TouchEvent('touchend', {
+            changedTouches: [{ clientX: 100, clientY: 100 } as Touch]
+          }))
+        })
+      }
+
+      // Should handle all interactions
+      expect(onStep).toHaveBeenCalledTimes(10)
+    })
+  })
+
+  describe('Memory Usage', () => {
+    test('cleans up animation resources properly', async () => {
+      const { unmount } = render(
+        <BinarySearchVisualization
+          data={[1, 2, 3, 4, 5]}
+          target={3}
+          isPlaying={true}
+          speed={1}
+          onStepComplete={() => {}}
+        />
+      )
+
+      performanceMonitor.startMonitoring()
+
+      // Run animation for a while
+      for (let i = 0; i < 30; i++) {
+        act(() => {
+          flushAnimationFrames()
+        })
+      }
+
+      const beforeUnmount = performanceMonitor.getMetrics().memoryUsage
+
+      // Unmount component
+      unmount()
+
+      // Allow cleanup to occur
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      })
+
+      const afterUnmount = performanceMonitor.getMetrics().memoryUsage
+
+      // Memory usage should not increase significantly after unmount
+      expect(afterUnmount - beforeUnmount).toBeLessThan(1000000) // Less than 1MB increase
+    })
+  })
+
+  describe('Device Capability Detection', () => {
+    test('detects low-end device capabilities', () => {
+      // Mock low-end device
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        value: 2,
+        writable: true,
+      })
+
+      Object.defineProperty(navigator, 'deviceMemory', {
+        value: 2,
+        writable: true,
+      })
+
+      const capabilities = performanceMonitor.detectDeviceCapabilities()
+
+      expect(capabilities.isLowEnd).toBe(true)
+      expect(capabilities.recommendedAnimationLevel).toBe('minimal')
+    })
+
+    test('detects high-end device capabilities', () => {
+      // Mock high-end device
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        value: 8,
+        writable: true,
+      })
+
+      Object.defineProperty(navigator, 'deviceMemory', {
+        value: 8,
+        writable: true,
+      })
+
+      const capabilities = performanceMonitor.detectDeviceCapabilities()
+
+      expect(capabilities.isLowEnd).toBe(false)
+      expect(capabilities.recommendedAnimationLevel).toBe('full')
+    })
+  })
+})

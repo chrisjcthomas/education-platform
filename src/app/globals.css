@@ -1,0 +1,200 @@
+@import "tailwindcss";
+@import "../styles/accessibility.css";
+
+@theme {
+  --color-background: 0 0% 100%;
+  --color-foreground: 222.2 84% 4.9%;
+  --color-card: 0 0% 100%;
+  --color-card-foreground: 222.2 84% 4.9%;
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 222.2 84% 4.9%;
+  --color-primary: 221.2 83.2% 53.3%;
+  --color-primary-foreground: 210 40% 98%;
+  --color-secondary: 210 40% 96%;
+  --color-secondary-foreground: 222.2 84% 4.9%;
+  --color-muted: 210 40% 96%;
+  --color-muted-foreground: 215.4 16.3% 46.9%;
+  --color-accent: 210 40% 96%;
+  --color-accent-foreground: 222.2 84% 4.9%;
+  --color-destructive: 0 84.2% 60.2%;
+  --color-destructive-foreground: 210 40% 98%;
+  --color-border: 214.3 31.8% 91.4%;
+  --color-input: 214.3 31.8% 91.4%;
+  --color-ring: 221.2 83.2% 53.3%;
+  --radius: 0.5rem;
+  
+  /* Educational platform specific colors */
+  --color-visualization-primary: 221.2 83.2% 53.3%;
+  --color-visualization-success: 142.1 76.2% 36.3%;
+  --color-visualization-warning: 47.9 95.8% 53.1%;
+  --color-visualization-error: 0 84.2% 60.2%;
+  --color-visualization-muted: 215.4 16.3% 46.9%;
+  --color-visualization-eliminated: 210 40% 96%;
+  --color-visualization-active: 214.3 31.8% 91.4%;
+  --color-visualization-found: 142.1 76.2% 36.3%;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: 222.2 84% 4.9%;
+    --color-foreground: 210 40% 98%;
+    --color-card: 222.2 84% 4.9%;
+    --color-card-foreground: 210 40% 98%;
+    --color-popover: 222.2 84% 4.9%;
+    --color-popover-foreground: 210 40% 98%;
+    --color-primary: 217.2 91.2% 59.8%;
+    --color-primary-foreground: 222.2 84% 4.9%;
+    --color-secondary: 217.2 32.6% 17.5%;
+    --color-secondary-foreground: 210 40% 98%;
+    --color-muted: 217.2 32.6% 17.5%;
+    --color-muted-foreground: 215 20.2% 65.1%;
+    --color-accent: 217.2 32.6% 17.5%;
+    --color-accent-foreground: 210 40% 98%;
+    --color-destructive: 0 62.8% 30.6%;
+    --color-destructive-foreground: 210 40% 98%;
+    --color-border: 217.2 32.6% 17.5%;
+    --color-input: 217.2 32.6% 17.5%;
+    --color-ring: 224.3 76.3% 94.1%;
+  }
+}
+
+body {
+  background: hsl(var(--color-background));
+  color: hsl(var(--color-foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Animation utilities for educational content */
+.animate-highlight {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: hsl(47.9 95.8% 53.1% / 0.3);
+}
+
+.animate-found {
+  animation: bounce 1s infinite;
+  background-color: hsl(142.1 76.2% 36.3% / 0.3);
+}
+
+.animate-eliminated {
+  opacity: 0.3;
+  filter: grayscale(100%);
+}
+
+/* Code editor styling */
+.monaco-editor {
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--color-border));
+}
+
+/* Visualization container */
+.visualization-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--color-border));
+  background-color: hsl(var(--color-card));
+  padding: 1rem;
+}
+
+/* Array element styling */
+.array-element {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  border: 2px solid hsl(var(--color-primary));
+  background-color: hsl(var(--color-background));
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 300ms;
+}
+
+.array-element.active {
+  border-color: hsl(221.2 83.2% 53.3%);
+  background-color: hsl(221.2 83.2% 53.3% / 0.1);
+}
+
+.array-element.eliminated {
+  border-color: hsl(215.4 16.3% 46.9%);
+  background-color: hsl(215.4 16.3% 46.9% / 0.1);
+  opacity: 0.5;
+}
+
+.array-element.found {
+  border-color: hsl(142.1 76.2% 36.3%);
+  background-color: hsl(142.1 76.2% 36.3% / 0.1);
+}
+
+/* Pointer styling */
+.algorithm-pointer {
+  position: absolute;
+  top: -2rem;
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: hsl(var(--color-primary));
+  font-size: 0.75rem;
+  color: hsl(var(--color-primary-foreground));
+}
+
+/* Control panel styling */
+.control-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--color-border));
+  background-color: hsl(var(--color-card));
+  padding: 1rem;
+}
+
+/* Learning mode indicators */
+.mode-beginner {
+  border-left: 4px solid hsl(142.1 76.2% 36.3%);
+  background-color: hsl(142.1 76.2% 36.3% / 0.05);
+}
+
+.mode-curious {
+  border-left: 4px solid hsl(221.2 83.2% 53.3%);
+  background-color: hsl(221.2 83.2% 53.3% / 0.05);
+}
+
+.mode-details {
+  border-left: 4px solid hsl(271.5 81.3% 55.9%);
+  background-color: hsl(271.5 81.3% 55.9% / 0.05);
+}
+
+/* Accessibility utilities */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus utilities for keyboard navigation */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--color-ring));
+}
+
+/* Reduced motion utilities */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-bounce,
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
