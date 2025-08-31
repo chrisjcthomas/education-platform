@@ -63,7 +63,7 @@ export class LanguageSwitchingService {
     // Convert control structures
     pythonCode = pythonCode.replace(/if\s*\(([^)]+)\)\s*{/g, 'if $1:')
     pythonCode = pythonCode.replace(/while\s*\(([^)]+)\)\s*{/g, 'while $1:')
-    pythonCode = pythonCode.replace(/for\s*\(([^)]+)\)\s*{/g, (match, condition) => {
+    pythonCode = pythonCode.replace(/for\s*\(([^)]+)\)\s*{/g, (_match, condition) => {
       // Handle for loops - this is a simplified conversion
       if (condition.includes('let i = 0; i < ')) {
         const arrayMatch = condition.match(/i < ([^;]+)/)
@@ -130,13 +130,7 @@ export class LanguageSwitchingService {
       'Make sure all variables are properly defined'
     ]
 
-    const warnings = []
-    if (jsCode.includes('Math.')) {
-      warnings.push('Some Math operations may need adjustment in Python')
-    }
-    if (jsCode.includes('===')) {
-      warnings.push('Triple equals (===) converted to double equals (==)')
-    }
+    const warnings = this.analyzeJavaScriptToPythonWarnings(jsCode)
 
     return {
       convertedCode: pythonCode,
@@ -232,13 +226,7 @@ export class LanguageSwitchingService {
       'Changed == to === for strict equality'
     ]
 
-    const warnings = []
-    if (pythonCode.includes('//')) {
-      warnings.push('Integer division (//) may need adjustment in JavaScript')
-    }
-    if (pythonCode.includes('**')) {
-      warnings.push('Exponentiation (**) should use Math.pow() in JavaScript')
-    }
+    const warnings = this.analyzePythonToJavaScriptWarnings(pythonCode)
 
     return {
       convertedCode: jsCode,
@@ -548,6 +536,104 @@ const steps = tracker.steps;
 console.log(\`Algorithm took \${steps.length} steps\`);`
       }
     }
+  }
+
+  /**
+   * Analyze JavaScript code for Python conversion warnings
+   * Only shows warnings for actual syntax conflicts
+   */
+  private analyzeJavaScriptToPythonWarnings(jsCode: string): string[] {
+    const warnings: string[] = []
+
+    // Remove comments and strings to avoid false positives
+    const codeWithoutCommentsAndStrings = this.removeCommentsAndStrings(jsCode)
+
+    // Check for strict equality operators (===, !==) in actual code
+    if (/[^=!]=={2,3}[^=]/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('Strict equality operators (=== and !==) converted to == and !=')
+    }
+
+    // Check for Math object usage in actual code (not in comments/strings)
+    const mathUsageRegex = /\bMath\.\w+\s*\(/g
+    if (mathUsageRegex.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('Math object methods may need Python equivalents (e.g., Math.floor() → int())')
+    }
+
+    // Check for array.length usage
+    if (/\w+\.length\b/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('Array .length property converted to len() function')
+    }
+
+    // Check for typeof operator
+    if (/\btypeof\b/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('typeof operator may need Python type() function equivalent')
+    }
+
+    return warnings
+  }
+
+  /**
+   * Analyze Python code for JavaScript conversion warnings
+   * Only shows warnings for actual syntax conflicts
+   */
+  private analyzePythonToJavaScriptWarnings(pythonCode: string): string[] {
+    const warnings: string[] = []
+
+    // Remove comments and strings to avoid false positives
+    const codeWithoutCommentsAndStrings = this.removeCommentsAndStrings(pythonCode, 'python')
+
+    // Check for integer division (//) in actual code
+    if (/\w+\s*\/\/\s*\w+/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('Integer division (//) converted to Math.floor(a / b)')
+    }
+
+    // Check for exponentiation (**) in actual code
+    if (/\w+\s*\*\*\s*\w+/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('Exponentiation (**) converted to Math.pow()')
+    }
+
+    // Check for len() function usage
+    if (/\blen\s*\(\s*\w+\s*\)/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('len() function converted to .length property')
+    }
+
+    // Check for range() function usage
+    if (/\brange\s*\(/.test(codeWithoutCommentsAndStrings)) {
+      warnings.push('range() function converted to for loop syntax')
+    }
+
+    return warnings
+  }
+
+  /**
+   * Remove comments and string literals to avoid false positive warnings
+   */
+  private removeCommentsAndStrings(code: string, language: 'javascript' | 'python' = 'javascript'): string {
+    let cleaned = code
+
+    if (language === 'javascript') {
+      // Remove single-line comments
+      cleaned = cleaned.replace(/\/\/.*$/gm, '')
+      // Remove multi-line comments
+      cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '')
+      // Remove string literals (single and double quotes)
+      cleaned = cleaned.replace(/'[^'\\]*(?:\\.[^'\\]*)*'/g, '""')
+      cleaned = cleaned.replace(/"[^"\\]*(?:\\.[^"\\]*)*"/g, '""')
+      // Remove template literals
+      cleaned = cleaned.replace(/`[^`\\]*(?:\\.[^`\\]*)*`/g, '""')
+    } else {
+      // Python
+      // Remove single-line comments
+      cleaned = cleaned.replace(/#.*$/gm, '')
+      // Remove triple-quoted strings
+      cleaned = cleaned.replace(/"""[\s\S]*?"""/g, '""')
+      cleaned = cleaned.replace(/'''[\s\S]*?'''/g, '""')
+      // Remove string literals (single and double quotes)
+      cleaned = cleaned.replace(/'[^'\\]*(?:\\.[^'\\]*)*'/g, '""')
+      cleaned = cleaned.replace(/"[^"\\]*(?:\\.[^"\\]*)*"/g, '""')
+    }
+
+    return cleaned
   }
 }
 

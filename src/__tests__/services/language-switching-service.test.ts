@@ -93,15 +93,38 @@ for (let i = 0; i < arr.length; i++) {
       expect(result.convertedCode).toContain('return i')
     })
 
-    test('provides warnings for complex conversions', () => {
+    test('provides intelligent warnings only for actual syntax conflicts', () => {
       const jsCode = `const result = Math.pow(2, 3);
-const isEqual = value === target;`
+const isEqual = value === target;
+const length = arr.length;`
 
       const result = languageSwitchingService.convertCode(jsCode, 'javascript', 'python')
-      
+
       expect(result.warnings).toBeDefined()
-      expect(result.warnings?.some(w => w.includes('Math operations'))).toBe(true)
-      expect(result.warnings?.some(w => w.includes('Triple equals'))).toBe(true)
+      expect(result.warnings?.some(w => w.includes('Math object methods'))).toBe(true)
+      expect(result.warnings?.some(w => w.includes('Strict equality operators'))).toBe(true)
+      expect(result.warnings?.some(w => w.includes('Array .length property'))).toBe(true)
+    })
+
+    test('does not show warnings for code without syntax conflicts', () => {
+      const jsCode = `const message = "Hello World";
+console.log(message);`
+
+      const result = languageSwitchingService.convertCode(jsCode, 'javascript', 'python')
+
+      expect(result.warnings).toBeDefined()
+      expect(result.warnings?.length).toBe(0)
+    })
+
+    test('ignores syntax in comments and strings', () => {
+      const jsCode = `// This comment mentions Math.pow and === operators
+const message = "Use === for comparison";
+const value = 42;`
+
+      const result = languageSwitchingService.convertCode(jsCode, 'javascript', 'python')
+
+      expect(result.warnings).toBeDefined()
+      expect(result.warnings?.length).toBe(0)
     })
   })
 
